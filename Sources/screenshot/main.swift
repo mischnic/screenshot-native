@@ -1,6 +1,13 @@
 import AppKit
 import SwiftCLI
 
+public struct StderrOutputStream: TextOutputStream {
+    public static let stream = StderrOutputStream()
+    public func write(_ string: String) { fputs(string, stderr) }
+}
+
+public var errStream = StderrOutputStream.stream
+
 func getID(app: String, title: String?) -> CGWindowID? {
     if let info = CGWindowListCopyWindowInfo([CGWindowListOption.optionOnScreenOnly, CGWindowListOption.excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] {
         for dict in info {
@@ -62,6 +69,8 @@ func imageTypeFromString(_ s: String?) -> NSBitmapImageRep.FileType {
     return NSBitmapImageRep.FileType.png
 }
 
+// -----------------
+
 func takeScreenshot(id: CGWindowID, file: String, withShadows: Bool, type: String?) {
     // compare with python version: what if window minimized / below other window / on different display?
     var options = CGWindowImageOption.bestResolution
@@ -77,7 +86,8 @@ func takeScreenshot(id: CGWindowID, file: String, withShadows: Bool, type: Strin
             let output = URL(fileURLWithPath: NSString(string: file).expandingTildeInPath)
             try imageData.write(to: output, options: .atomic)
         } catch {
-            print("Saving screenshot to \(file) failed:\n\(error)")
+            print("Saving screenshot to \(file) failed:\n\(error)", to: &errStream)
+            exit(1)
         }
     }
 }
@@ -98,10 +108,11 @@ final class MainCommand: Command {
             takeScreenshot(id: id, file: output, withShadows: shadow.value, type: type.value)
         } else {
             if title.value == nil {
-                print("Could not find a window by '\(app.value)'")
+                print("Could not find a window by '\(app.value)'", to: &errStream)
             } else {
-                print("Could not find a window by '\(app.value)' titled '\(title.value!)'")
+                print("Could not find a window by '\(app.value)' titled '\(title.value!)'", to: &errStream)
             }
+            exit(1)
         }
     }
 }
